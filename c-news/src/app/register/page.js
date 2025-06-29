@@ -1,82 +1,143 @@
-"use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import config from "../../../config.js";
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import config from "../../../config.js"
 
 export default function Register() {
-    const router = useRouter();
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [password2, setPassword2] = useState("");
-    const [error, setError] = useState("");
-    const [username, setUsername] = useState("");
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const res = await fetch(`${config.api}auth/register/`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                email,
-                password, 
-                password2, 
-                username
-            }),
-        });
-        if (res.ok) {
-            router.push("/login");
-        } else {
-            setError("Registration failed");
-        }
-    };
+  const router = useRouter()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [password2, setPassword2] = useState("")
+  const [username, setUsername] = useState("")
+  const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-            <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
-                <h2 className="text-2xl font-semibold text-center mb-6">Register</h2>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    
-                    <input
-                        type="email"
-                        placeholder="Email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                    />
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                    />
-                    <input
-                        type="password"
-                        placeholder="Confirm Password"
-                        value={password2}
-                        onChange={(e) => setPassword2(e.target.value)}
-                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                    />
-                    <input
-                        type="text"
-                        placeholder="Username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                    />
-                    <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
-                        Register
-                    </button>
-                    {error && (
-                        <p className="text-red-500 text-sm text-center">{error}</p>
-                    )}
-                </form>
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    if (password !== password2) {
+      setError("Пароли не совпадают")
+      return
+    }
+
+    setIsLoading(true)
+    setError("")
+
+    try {
+      const res = await fetch(`${config.api}auth/register/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          password2,
+          username,
+        }),
+      })
+
+      if (res.ok) {
+        router.push("/login")
+      } else {
+        const data = await res.json()
+        setError(data.message || "Ошибка регистрации")
+      }
+    } catch (err) {
+      setError("Ошибка подключения к серверу")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        <div className="glass-card p-8">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <span className="text-white text-2xl font-bold">C</span>
             </div>
+            <h2 className="text-2xl font-bold text-gray-800">Создать аккаунт</h2>
+            <p className="text-gray-600 mt-2">Присоединяйтесь к C-News</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Имя пользователя</label>
+              <input
+                type="text"
+                placeholder="Введите имя пользователя"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="input-field"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <input
+                type="email"
+                placeholder="Введите email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input-field"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Пароль</label>
+              <input
+                type="password"
+                placeholder="Введите пароль"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="input-field"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Подтвердите пароль</label>
+              <input
+                type="password"
+                placeholder="Повторите пароль"
+                value={password2}
+                onChange={(e) => setPassword2(e.target.value)}
+                className="input-field"
+                required
+              />
+            </div>
+
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? "Регистрация..." : "Зарегистрироваться"}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-gray-600">
+              Уже есть аккаунт?{" "}
+              <Link href="/login" className="text-blue-600 hover:underline font-medium">
+                Войти
+              </Link>
+            </p>
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  )
 }
