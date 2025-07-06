@@ -1,43 +1,18 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useState, useEffect } from "react"
+import { useAuth } from "../contexts/AuthContext.js"
+import { UserDisplay } from "./UserDisplay.js"
 
-export default function CategoryMenu() {
+export function Header() {
+  const { isAuthenticated, user, logout } = useAuth()
   const [categories, setCategories] = useState([])
-  const [isOpen, setIsOpen] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [user, setUser] = useState(null)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   useEffect(() => {
-    // Check authentication status
-    const token = localStorage.getItem("token")
-    setIsLoggedIn(!!token)
-
-    // Fetch user info if logged in
-    if (token) {
-      fetchUserInfo(token)
-    }
-
-    // Fetch categories
     fetchCategories()
   }, [])
-
-  const fetchUserInfo = async (token) => {
-    try {
-      const res = await fetch("https://admin.ilkin.site/api/auth/profile/", {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      })
-      if (res.ok) {
-        const userData = await res.json()
-        setUser(userData)
-      }
-    } catch (err) {
-      console.error("Ошибка загрузки пользователя:", err)
-    }
-  }
 
   const fetchCategories = async () => {
     try {
@@ -45,66 +20,79 @@ export default function CategoryMenu() {
       const data = await res.json()
       setCategories(data.results || data)
     } catch (err) {
-      console.error("Ошибка загрузки категорий:", err)
+      console.error("Error loading categories:", err)
     }
   }
 
   const handleLogout = () => {
-    localStorage.removeItem("token")
-    localStorage.removeItem("refresh")
-    setIsLoggedIn(false)
-    setUser(null)
-    setIsOpen(false)
+    logout()
+    setIsMenuOpen(false)
     window.location.href = "/"
   }
 
   const toggleMenu = () => {
-    setIsOpen(!isOpen)
+    setIsMenuOpen(!isMenuOpen)
   }
 
   const closeMenu = () => {
-    setIsOpen(false)
+    setIsMenuOpen(false)
   }
 
   const menuItems = [
-    { name: "Главная", href: "/", icon: "🏠" },
-    { name: "Все статьи", href: "/list", icon: "📰" },
-    { name: "Поиск", href: "/search", icon: "🔍" },
+    { name: "Home", href: "/", icon: "🏠" },
+    { name: "All Articles", href: "/list", icon: "📰" },
+    { name: "Search", href: "/search", icon: "🔍" },
   ]
 
   return (
     <>
-      {/* Burger Menu Button - Fixed Position */}
-      <div className="fixed top-4 right-4 z-50">
-        <button
-          onClick={toggleMenu}
-          className="glass-card p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          aria-label={isOpen ? "Закрыть меню" : "Открыть меню"}
-        >
-          {/* Three Lines Burger Icon */}
-          <div className="w-6 h-6 flex flex-col justify-center space-y-1.5">
-            <div
-              className={`w-full h-0.5 bg-gray-700 rounded transition-all duration-300 ${
-                isOpen ? "rotate-45 translate-y-2" : ""
-              }`}
-            ></div>
-            <div
-              className={`w-full h-0.5 bg-gray-700 rounded transition-all duration-300 ${isOpen ? "opacity-0" : ""}`}
-            ></div>
-            <div
-              className={`w-full h-0.5 bg-gray-700 rounded transition-all duration-300 ${
-                isOpen ? "-rotate-45 -translate-y-2" : ""
-              }`}
-            ></div>
-          </div>
-        </button>
-      </div>
+      <header className="glass-card border-b border-white/20 mb-8 sticky top-0 z-40">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <Link href="/" className="flex items-center space-x-3 group">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-200 group-hover:scale-105">
+                <span className="text-white font-bold text-xl">C</span>
+              </div>
+              <div>
+                <span className="text-2xl font-bold text-gradient">C-News</span>
+                <p className="text-xs text-gray-500 -mt-1">Latest News</p>
+              </div>
+            </Link>
 
-      {/* Menu Overlay */}
-      {isOpen && (
+            {/* Menu Button - Always Visible */}
+            <button
+              onClick={toggleMenu}
+              className="p-2 rounded-xl hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+            >
+              <div className="w-6 h-6 flex flex-col justify-center space-y-1.5">
+                <div
+                  className={`w-full h-0.5 bg-gray-700 rounded transition-all duration-300 ${
+                    isMenuOpen ? "rotate-45 translate-y-2" : ""
+                  }`}
+                ></div>
+                <div
+                  className={`w-full h-0.5 bg-gray-700 rounded transition-all duration-300 ${
+                    isMenuOpen ? "opacity-0" : ""
+                  }`}
+                ></div>
+                <div
+                  className={`w-full h-0.5 bg-gray-700 rounded transition-all duration-300 ${
+                    isMenuOpen ? "-rotate-45 -translate-y-2" : ""
+                  }`}
+                ></div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Menu Overlay - Always Available */}
+      {isMenuOpen && (
         <>
           {/* Backdrop */}
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 animate-fade-in" onClick={closeMenu} />
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[45] animate-fade-in" onClick={closeMenu} />
 
           {/* Menu Panel */}
           <div className="fixed top-0 right-0 h-full w-80 max-w-[90vw] glass-card z-50 overflow-y-auto animate-slide-in-right">
@@ -117,13 +105,13 @@ export default function CategoryMenu() {
                   </div>
                   <div>
                     <span className="text-xl font-bold text-gradient">C-News</span>
-                    <p className="text-xs text-gray-500 -mt-1">Меню навигации</p>
+                    <p className="text-xs text-gray-500 -mt-1">Navigation Menu</p>
                   </div>
                 </div>
                 <button
                   onClick={closeMenu}
                   className="p-2 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  aria-label="Закрыть меню"
+                  aria-label="Close menu"
                 >
                   <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -132,25 +120,15 @@ export default function CategoryMenu() {
               </div>
 
               {/* User Info */}
-              {isLoggedIn && user && (
+              {isAuthenticated && user && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl mb-6">
-                  <div className="flex items-center space-x-3">
-                    <img
-                      src={user.profile_picture || "/placeholder.svg?height=40&width=40"}
-                      alt="Profile"
-                      className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
-                    />
-                    <div>
-                      <p className="font-medium text-gray-800">{user.username}</p>
-                      <p className="text-sm text-gray-600">{user.email}</p>
-                    </div>
-                  </div>
+                  <UserDisplay user={user} variant="full" />
                 </div>
               )}
 
               {/* Navigation Links */}
               <div className="space-y-2 mb-8">
-                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Навигация</h3>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Navigation</h3>
                 {menuItems.map((item) => (
                   <Link
                     key={item.name}
@@ -167,7 +145,7 @@ export default function CategoryMenu() {
               {/* Categories */}
               <div className="space-y-2 mb-8">
                 <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                  Категории ({categories.length})
+                  Categories ({categories.length})
                 </h3>
                 <div className="max-h-64 overflow-y-auto space-y-1 custom-scrollbar">
                   {categories.map((cat) => (
@@ -186,8 +164,8 @@ export default function CategoryMenu() {
 
               {/* User Actions */}
               <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Аккаунт</h3>
-                {isLoggedIn ? (
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Account</h3>
+                {isAuthenticated ? (
                   <div className="space-y-2">
                     <Link
                       href="/profil"
@@ -195,14 +173,14 @@ export default function CategoryMenu() {
                       onClick={closeMenu}
                     >
                       <span className="text-lg mr-3 group-hover:scale-110 transition-transform">👤</span>
-                      <span className="font-medium">Мой профиль</span>
+                      <span className="font-medium">My Profile</span>
                     </Link>
                     <button
                       onClick={handleLogout}
                       className="flex items-center w-full p-3 rounded-xl text-red-600 hover:bg-red-50 transition-all duration-200 group"
                     >
                       <span className="text-lg mr-3 group-hover:scale-110 transition-transform">🚪</span>
-                      <span className="font-medium">Выйти</span>
+                      <span className="font-medium">Sign Out</span>
                     </button>
                   </div>
                 ) : (
@@ -213,7 +191,7 @@ export default function CategoryMenu() {
                       onClick={closeMenu}
                     >
                       <span className="text-lg mr-3 group-hover:scale-110 transition-transform">🔑</span>
-                      <span className="font-medium">Войти</span>
+                      <span className="font-medium">Sign In</span>
                     </Link>
                     <Link
                       href="/register"
@@ -221,7 +199,7 @@ export default function CategoryMenu() {
                       onClick={closeMenu}
                     >
                       <span className="text-lg mr-3 group-hover:scale-110 transition-transform">📝</span>
-                      <span className="font-medium">Регистрация</span>
+                      <span className="font-medium">Sign Up</span>
                     </Link>
                   </div>
                 )}
@@ -231,7 +209,7 @@ export default function CategoryMenu() {
               <div className="border-t border-gray-200 pt-6 mt-8">
                 <div className="text-center">
                   <p className="text-xs text-gray-500">© 2024 C-News</p>
-                  <p className="text-xs text-gray-400 mt-1">Все права защищены</p>
+                  <p className="text-xs text-gray-400 mt-1">All rights reserved</p>
                 </div>
               </div>
             </div>

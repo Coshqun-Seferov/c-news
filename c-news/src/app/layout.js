@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google"
+import { AuthProvider } from "../contexts/AuthContext.js"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -42,10 +43,6 @@ export const metadata = {
       "max-snippet": -1,
     },
   },
-  verification: {
-    google: "your-google-verification-code",
-    yandex: "your-yandex-verification-code",
-  },
 }
 
 export default function RootLayout({ children }) {
@@ -61,35 +58,17 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen`}
       >
-        <div className="relative">
-          {/* Background Pattern */}
-          <div className="fixed inset-0 -z-10">
-            <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
-          </div>
-
-          {/* Main Content */}
-          <main className="relative z-10">{children}</main>
-
-          {/* Global Loading Indicator */}
-          <div id="loading-indicator" className="hidden fixed top-4 right-4 z-50">
-            <div className="glass-card p-3 rounded-xl">
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <span className="text-sm text-gray-600">Загрузка...</span>
-              </div>
+        <AuthProvider>
+          <div className="relative">
+            {/* Background Pattern */}
+            <div className="fixed inset-0 -z-10">
+              <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
             </div>
-          </div>
-        </div>
 
-        {/* Analytics Scripts */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Google Analytics or other analytics code
-              console.log('C-News loaded successfully');
-            `,
-          }}
-        />
+            {/* Main Content */}
+            <main className="relative z-10">{children}</main>
+          </div>
+        </AuthProvider>
       </body>
     </html>
   )

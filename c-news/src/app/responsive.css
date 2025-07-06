@@ -1,55 +1,71 @@
-/* Additional responsive utilities */
+:root {
+  /* Scrollbar */
+  --scrollbar-width: 6px;
+  --scrollbar-track-bg: #f1f5f9;
+  --scrollbar-track-radius: 3px;
+  --scrollbar-thumb-bg: #cbd5e1;
+  --scrollbar-thumb-hover-bg: #94a3b8;
 
-/* Text truncation utilities */
-.line-clamp-1 {
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
+  /* Focus */
+  --focus-ring-color: #3b82f6;
+
+  /* Padding */
+  --padding-mobile: 1rem;
+  --padding-tablet: 1.5rem;
+  --padding-desktop: 2rem;
+
+  /* Font sizes */
+  --font-size-mobile-sm: 0.875rem;
 }
 
-.line-clamp-2 {
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
+.line-clamp-1,
+.line-clamp-2,
 .line-clamp-3 {
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
+}
+
+.line-clamp-1 {
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
   -webkit-line-clamp: 3;
 }
 
 /* Custom scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: var(--scrollbar-width);
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 3px;
+  background: var(--scrollbar-track-bg);
+  border-radius: var(--scrollbar-track-radius);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
+  background: var(--scrollbar-thumb-bg);
+  border-radius: var(--scrollbar-track-radius);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--scrollbar-thumb-hover-bg);
 }
 
 /* Mobile-specific styles */
 @media (max-width: 640px) {
   .mobile-padding {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: var(--padding-mobile);
+    padding-right: var(--padding-mobile);
   }
 
   .mobile-text-sm {
-    font-size: 0.875rem;
+    font-size: var(--font-size-mobile-sm);
   }
 
   .mobile-hidden {
@@ -64,8 +80,8 @@
   }
 
   .tablet-padding {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
+    padding-left: var(--padding-tablet);
+    padding-right: var(--padding-tablet);
   }
 }
 
@@ -80,8 +96,8 @@
   }
 
   .desktop-padding {
-    padding-left: 2rem;
-    padding-right: 2rem;
+    padding-left: var(--padding-desktop);
+    padding-right: var(--padding-desktop);
   }
 }
 
@@ -103,7 +119,7 @@
 
 /* Focus states for accessibility */
 .focus-ring:focus {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid var(--focus-ring-color);
   outline-offset: 2px;
 }
 

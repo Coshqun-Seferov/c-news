@@ -2,569 +2,346 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
-import config from "../../../config.js"
+import { useAuth } from "../../contexts/AuthContext.js"
+import { Header } from "../../components/Header.js"
+import { ProfilePictureUpload } from "../../components/ProfilePictureUpload.js"
+import { ChangePasswordForm } from "../../components/ChangePasswordForm.js"
+import { getUserDisplayName, getUserRole, isUserVerified } from "../../utils/userUtils.js"
 
 export default function Profile() {
   const router = useRouter()
-  const [user, setUser] = useState(null)
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
-  const [passwordError, setPasswordError] = useState("")
-  const [passwordSuccess, setPasswordSuccess] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [isChangingPassword, setIsChangingPassword] = useState(false)
-
-  // Form states
+  const { user, isAuthenticated, isLoading, updateUser } = useAuth()
+  const [isEditing, setIsEditing] = useState(false)
+  const [activeTab, setActiveTab] = useState("profile") // profile, security, diagnostic
   const [formData, setFormData] = useState({
-    username: "",
+    first_name: "",
+    last_name: "",
     email: "",
     bio: "",
-    profilePicture: null,
   })
-
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  })
+  const [updateLoading, setUpdateLoading] = useState(false)
+  const [message, setMessage] = useState("")
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const token = localStorage.getItem("token")
-        if (!token) {
-          router.push("/login")
-          return
-        }
-
-        const res = await fetch(`${config.api}auth/profile/`, {
-            method: "GET",
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        })
-
-        if (!res.ok) {
-          if (res.status === 401) {
-            localStorage.removeItem("token")
-            localStorage.removeItem("refresh")
-            router.push("/login")
-            return
-          }
-          throw new Error("Не удалось загрузить данные пользователя")
-        }
-
-        const data = await res.json()
-        setUser(data)
-        setFormData({
-          username: data.username || "",
-          email: data.email || "",
-          bio: data.bio || "",
-          profilePicture: null,
-        })
-      } catch (err) {
-        setError(err.message)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchUser()
-  }, [router])
-
-  const handleInputChange = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
-    if (error) setError("")
-    if (success) setSuccess("")
-  }
-
-  const handlePasswordChange = (field, value) => {
-    setPasswordData((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
-    if (passwordError) setPasswordError("")
-    if (passwordSuccess) setPasswordSuccess("")
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem("token")
-    localStorage.removeItem("refresh")
-    router.push("/login")
-  }
-
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault()
-    setIsUpdating(true)
-    setError("")
-    setSuccess("")
-
-    const token = localStorage.getItem("token")
-    if (!token) {
+    if (!isLoading && !isAuthenticated) {
       router.push("/login")
-      return
     }
+  }, [isAuthenticated, isLoading, router])
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        first_name: user.first_name || "",
+        last_name: user.last_name || "",
+        email: user.email || "",
+        bio: user.bio || "",
+      })
+    }
+  }, [user])
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setUpdateLoading(true)
+    setMessage("")
 
     try {
-      let hasUpdates = false
-
-      // 1. Update basic profile info
-      const basicUpdateData = {}
-      if (formData.username !== user.username && formData.username.trim()) {
-        basicUpdateData.username = formData.username.trim()
-      }
-      if (formData.email !== user.email && formData.email.trim()) {
-        basicUpdateData.email = formData.email.trim()
-      }
-      if (formData.bio !== user.bio) {
-        basicUpdateData.bio = formData.bio
-      }
-
-      if (Object.keys(basicUpdateData).length > 0) {
-        const res = await fetch(`${config.api}auth/profile/`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Token ${token}`,
-          },
-          body: JSON.stringify(basicUpdateData),
-        })
-
-        if (!res.ok) {
-          const errorData = await res.json()
-          throw new Error(errorData.detail || errorData.message || "Не удалось обновить профиль")
-        }
-
-        const updatedUser = await res.json()
-        setUser(updatedUser)
-        hasUpdates = true
-      }
-
-      // 2. Update profile picture
-      if (formData.profilePicture) {
-        const formDataPicture = new FormData()
-        formDataPicture.append("profile_picture", formData.profilePicture)
-
-        const res = await fetch(`${config.api}auth/profile/`, {
-          method: "POST",
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-          body: formDataPicture,
-        })
-
-        if (!res.ok) {
-          const errorData = await res.json()
-          throw new Error(errorData.detail || "Не удалось обновить фото профиля")
-        }
-
-        const updatedUser = await res.json()
-        setUser(updatedUser)
-        hasUpdates = true
-      }
-
-      if (hasUpdates) {
-        setSuccess("Профиль успешно обновлен!")
-        setFormData((prev) => ({
-          ...prev,
-          profilePicture: null,
-        }))
-
-        // Clear file input
-        const fileInput = document.querySelector('input[type="file"]')
-        if (fileInput) fileInput.value = ""
-      } else {
-        setError("Нет изменений для сохранения")
-      }
-    } catch (err) {
-      setError(err.message)
+      await updateUser(formData)
+      setMessage("Profile updated successfully!")
+      setIsEditing(false)
+    } catch (error) {
+      setMessage(error.message || "Failed to update profile")
     } finally {
-      setIsUpdating(false)
+      setUpdateLoading(false)
     }
   }
 
-  const handleChangePassword = async (e) => {
-    e.preventDefault()
-    setIsChangingPassword(true)
-    setPasswordError("")
-    setPasswordSuccess("")
+  const handleInputChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    })
+  }
 
-    const token = localStorage.getItem("token")
-    if (!token) {
-      router.push("/login")
-      return
-    }
+  const handleProfilePictureUpdate = (updatedUser) => {
+    updateUser(updatedUser)
+    setMessage("Profile picture updated successfully!")
+  }
 
-    try {
-      if (!passwordData.currentPassword.trim() || !passwordData.newPassword.trim()) {
-        throw new Error("Заполните все поля для смены пароля")
-      }
-
-      if (passwordData.newPassword !== passwordData.confirmPassword) {
-        throw new Error("Новые пароли не совпадают")
-      }
-
-      if (passwordData.newPassword.length < 6) {
-        throw new Error("Новый пароль должен содержать минимум 6 символов")
-      }
-
-      if (passwordData.currentPassword === passwordData.newPassword) {
-        throw new Error("Новый пароль должен отличаться от текущего")
-      }
-
-      console.log("🔄 Changing password via API...")
-
-      const res = await fetch(`${config.api}auth/change-password/`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Token ${token}`,
-        },
-        body: JSON.stringify({
-          old_password: passwordData.currentPassword,
-          new_password: passwordData.newPassword,
-        }),
-      })
-
-      console.log(`📊 Response status: ${res.status}`)
-
-      if (!res.ok) {
-        const errorData = await res.json()
-        console.log("❌ Error response:", errorData)
-
-        // Обработка конкретных ошибок
-        if (errorData.old_password) {
-          const oldPassError = Array.isArray(errorData.old_password)
-            ? errorData.old_password[0]
-            : errorData.old_password
-          throw new Error(`Текущий пароль: ${oldPassError}`)
-        }
-
-        if (errorData.new_password) {
-          const newPassError = Array.isArray(errorData.new_password)
-            ? errorData.new_password[0]
-            : errorData.new_password
-          throw new Error(`Новый пароль: ${newPassError}`)
-        }
-
-        if (errorData.detail) {
-          throw new Error(errorData.detail)
-        }
-
-        if (errorData.message) {
-          throw new Error(errorData.message)
-        }
-
-        throw new Error("Не удалось изменить пароль")
-      }
-
-      console.log("✅ Password changed successfully!")
-      setPasswordSuccess("Пароль успешно изменен!")
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      })
-    } catch (err) {
-      console.error("💥 Password change error:", err.message)
-      setPasswordError(err.message)
-    } finally {
-      setIsChangingPassword(false)
-    }
+  const handlePasswordChangeSuccess = () => {
+    setMessage("Password changed successfully! Please test your new password using the diagnostic tool.")
+    setTimeout(() => setMessage(""), 10000)
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <div className="glass-card p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Загрузка профиля...</p>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+        <Header />
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-4xl mx-auto">
+            <div className="glass-card p-8">
+              <div className="animate-pulse">
+                <div className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4"></div>
+                <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-2/3 mx-auto"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )
   }
 
-  if (error && !user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4">
-        <div className="glass-card p-8 text-center max-w-md">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-red-500 text-2xl">⚠</span>
-          </div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-2">Ошибка загрузки</h3>
-          <p className="text-red-500 mb-4">{error}</p>
-          <Link href="/login" className="btn-primary">
-            Войти заново
-          </Link>
-        </div>
-      </div>
-    )
+  if (!isAuthenticated || !user) {
+    return null
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Header */}
-      <header className="glass-card border-b border-white/20 mb-8">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">C</span>
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                C-News
-              </span>
-            </Link>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+      <Header />
 
-            <div className="flex items-center space-x-4">
-              <Link href="/list" className="text-gray-600 hover:text-blue-600 transition-colors">
-                Статьи
-              </Link>
-              <button onClick={handleLogout} className="btn-secondary">
-                Выйти
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="max-w-2xl mx-auto space-y-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="max-w-4xl mx-auto">
           {/* Profile Header */}
-          <div className="glass-card p-8">
-            <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
-              <div className="relative">
-                <img
-                  src={user?.profile_picture || "/placeholder.svg?height=100&width=100"}
-                  alt="Profile"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
-                />
-                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-white flex items-center justify-center">
-                  <span className="text-white text-xs">✓</span>
-                </div>
-              </div>
-
-              <div className="text-center sm:text-left flex-1">
-                <h1 className="text-2xl font-bold text-gray-800">{user?.username}</h1>
-                <p className="text-gray-600">{user?.email}</p>
-                {user?.bio && <p className="text-gray-600 mt-2 italic bg-gray-50 p-2 rounded-lg">"{user.bio}"</p>}
-                <div className="flex items-center justify-center sm:justify-start mt-3 space-x-4 text-sm text-gray-500">
-                  <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded-full">Активен</span>
-                  <span>Участник с {new Date().getFullYear()}</span>
-                </div>
+          <div className="glass-card p-8 mb-8">
+            <div className="text-center">
+              <ProfilePictureUpload user={user} onUpdate={handleProfilePictureUpdate} />
+              <h1 className="text-2xl font-bold text-gray-800 mt-4">{getUserDisplayName(user)}</h1>
+              <p className="text-gray-600">{user.email || ""}</p>
+              <div className="flex items-center justify-center space-x-2 mt-2">
+                <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                  {getUserRole(user)}
+                </span>
+                {isUserVerified(user) && (
+                  <span className="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                    ✓ Verified
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Profile Update Form */}
-          <div className="glass-card p-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-6">Редактировать профиль</h2>
+          {/* Success/Error Message */}
+          {message && (
+            <div
+              className={`mb-6 p-4 rounded-xl ${
+                message.includes("successfully") ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+              }`}
+            >
+              {message}
+            </div>
+          )}
 
-            <form onSubmit={handleUpdateProfile} className="space-y-6">
-              {/* Profile Picture */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Фото профиля</label>
-                <div className="flex items-center space-x-4">
-                  <img
-                    src={user?.profile_picture || "/placeholder.svg?height=60&width=60"}
-                    alt="Current profile"
-                    className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
-                  />
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/jpg"
-                    onChange={(e) => handleInputChange("profilePicture", e.target.files[0])}
-                    className="input-field flex-1"
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-1">Форматы: JPG, PNG. Максимум 5MB</p>
-              </div>
-
-              {/* Username */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Имя пользователя</label>
-                <input
-                  type="text"
-                  value={formData.username}
-                  onChange={(e) => handleInputChange("username", e.target.value)}
-                  className="input-field"
-                  placeholder="Введите имя пользователя"
-                  minLength={3}
-                  maxLength={30}
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email адрес</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  className="input-field"
-                  placeholder="Введите email"
-                />
-              </div>
-
-              {/* Bio */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">О себе</label>
-                <textarea
-                  value={formData.bio}
-                  onChange={(e) => handleInputChange("bio", e.target.value)}
-                  rows={3}
-                  className="input-field resize-none"
-                  placeholder="Расскажите о себе..."
-                  maxLength={500}
-                />
-                <p className="text-xs text-gray-500 mt-1">{formData.bio.length}/500 символов</p>
-              </div>
-
-              {/* Messages */}
-              {error && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start space-x-3">
-                  <span className="text-red-500 text-lg">⚠</span>
-                  <div>
-                    <p className="text-red-600 text-sm font-medium">Ошибка</p>
-                    <p className="text-red-600 text-sm">{error}</p>
-                  </div>
-                </div>
-              )}
-
-              {success && (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-xl flex items-start space-x-3">
-                  <span className="text-green-500 text-lg">✓</span>
-                  <div>
-                    <p className="text-green-600 text-sm font-medium">Успешно</p>
-                    <p className="text-green-600 text-sm">{success}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isUpdating}
-                className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-              >
-                {isUpdating ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Сохранение...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>💾</span>
-                    <span>Сохранить изменения</span>
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
-
-          {/* Password Change Form */}
-          <div className="glass-card p-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-6">Изменить пароль</h2>
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-              <div className="flex items-start space-x-3">
-                <span className="text-blue-500 text-lg">💡</span>
-                <div>
-                  <p className="text-blue-800 text-sm font-medium">Подсказки для смены пароля:</p>
-                  <ul className="text-blue-700 text-sm mt-2 space-y-1">
-                    <li>• Убедитесь, что вводите текущий пароль правильно</li>
-                    <li>• Новый пароль должен содержать минимум 6 символов</li>
-                    <li>• Новый пароль должен отличаться от текущего</li>
-                    <li>• Если забыли пароль, выйдите и войдите заново</li>
-                  </ul>
-                </div>
-              </div>
+          {/* Tabs */}
+          <div className="glass-card mb-8">
+            <div className="border-b border-gray-200">
+              <nav className="flex space-x-8 px-8 pt-6">
+                <button
+                  onClick={() => setActiveTab("profile")}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === "profile"
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  👤 Profile Information
+                </button>
+                <button
+                  onClick={() => setActiveTab("security")}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === "security"
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  🔒 Security
+                </button>
+                <button
+                  onClick={() => setActiveTab("diagnostic")}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === "diagnostic"
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  🔧 Password Diagnostic
+                </button>
+              </nav>
             </div>
 
-            <form onSubmit={handleChangePassword} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Текущий пароль</label>
-                <input
-                  type="password"
-                  value={passwordData.currentPassword}
-                  onChange={(e) => handlePasswordChange("currentPassword", e.target.value)}
-                  className="input-field"
-                  placeholder="Введите текущий пароль"
-                  required
-                />
-              </div>
+            <div className="p-8">
+              {/* Profile Tab */}
+              {activeTab === "profile" && (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                      <input
+                        type="text"
+                        name="first_name"
+                        value={formData.first_name}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className="input-field disabled:bg-gray-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                      <input
+                        type="text"
+                        name="last_name"
+                        value={formData.last_name}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className="input-field disabled:bg-gray-50"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Новый пароль</label>
-                <input
-                  type="password"
-                  value={passwordData.newPassword}
-                  onChange={(e) => handlePasswordChange("newPassword", e.target.value)}
-                  className="input-field"
-                  placeholder="Введите новый пароль"
-                  minLength={6}
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">Минимум 6 символов</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Подтвердите новый пароль</label>
-                <input
-                  type="password"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => handlePasswordChange("confirmPassword", e.target.value)}
-                  className="input-field"
-                  placeholder="Повторите новый пароль"
-                  minLength={6}
-                  required
-                />
-              </div>
-
-              {/* Password Messages */}
-              {passwordError && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start space-x-3">
-                  <span className="text-red-500 text-lg">⚠</span>
                   <div>
-                    <p className="text-red-600 text-sm font-medium">Ошибка</p>
-                    <p className="text-red-600 text-sm">{passwordError}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      className="input-field disabled:bg-gray-50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
+                    <textarea
+                      name="bio"
+                      value={formData.bio}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      rows={4}
+                      className="input-field disabled:bg-gray-50"
+                      placeholder="Tell us about yourself..."
+                    />
+                  </div>
+
+                  <div className="flex justify-between">
+                    {isEditing ? (
+                      <div className="flex space-x-4">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditing(false)}
+                          className="btn-secondary"
+                          disabled={updateLoading}
+                        >
+                          Cancel
+                        </button>
+                        <button type="submit" className="btn-primary" disabled={updateLoading}>
+                          {updateLoading ? "Saving..." : "Save Changes"}
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => setIsEditing(true)} className="btn-primary">
+                        Edit Profile
+                      </button>
+                    )}
+                  </div>
+                </form>
+              )}
+
+              {/* Security Tab */}
+              {activeTab === "security" && (
+                <div className="space-y-6">
+                  <ChangePasswordForm onSuccess={handlePasswordChangeSuccess} />
+
+                  {/* Account Security Info */}
+                  <div className="glass-card p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <span className="text-blue-500 mr-2">🛡️</span>
+                      Account Security
+                    </h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-gray-800">Two-Factor Authentication</p>
+                          <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
+                        </div>
+                        <button className="btn-secondary text-sm">Enable 2FA</button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-gray-800">Login Sessions</p>
+                          <p className="text-sm text-gray-600">Manage your active login sessions</p>
+                        </div>
+                        <button className="btn-secondary text-sm">View Sessions</button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {passwordSuccess && (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-xl flex items-start space-x-3">
-                  <span className="text-green-500 text-lg">✓</span>
-                  <div>
-                    <p className="text-green-600 text-sm font-medium">Успешно</p>
-                    <p className="text-green-600 text-sm">{passwordSuccess}</p>
+              {/* Diagnostic Tab - упрощенная версия */}
+              {activeTab === "diagnostic" && (
+                <div className="space-y-6">
+                  <div className="glass-card p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <span className="text-yellow-500 mr-2">⚠️</span>
+                      Password Change Issues?
+                    </h3>
+                    <div className="space-y-3 text-sm text-gray-600">
+                      <p>
+                        <strong>If you can't log in with your new password:</strong>
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 ml-4">
+                        <li>Make sure you're using the exact password you set</li>
+                        <li>Check for typos, case sensitivity, and extra spaces</li>
+                        <li>Try logging out completely and logging back in</li>
+                        <li>Clear your browser cache and cookies</li>
+                        <li>Check the browser console (F12) for error messages</li>
+                      </ul>
+                      <p className="mt-4">
+                        <strong>Common causes:</strong>
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 ml-4">
+                        <li>Password wasn't actually saved on the server</li>
+                        <li>Server requires password in different format</li>
+                        <li>Session/token issues after password change</li>
+                        <li>Browser autocomplete using old password</li>
+                      </ul>
+                      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-blue-700 text-sm">
+                          <strong>Quick test:</strong> Try logging in with your new password in an incognito/private
+                          browser window.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
+            </div>
+          </div>
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isChangingPassword}
-                className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-              >
-                {isChangingPassword ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Изменение пароля...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>🔒</span>
-                    <span>Изменить пароль</span>
-                  </>
-                )}
-              </button>
-            </form>
+          {/* Account Info */}
+          <div className="glass-card p-8">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Account Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600">Username:</span>
+                <span className="ml-2 font-medium">{user.username || "N/A"}</span>
+              </div>
+              <div>
+                <span className="text-gray-600">Status:</span>
+                <span className={`ml-2 font-medium ${isUserVerified(user) ? "text-green-600" : "text-yellow-600"}`}>
+                  {isUserVerified(user) ? "Verified" : "Unverified"}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-600">Role:</span>
+                <span className="ml-2 font-medium">{getUserRole(user)}</span>
+              </div>
+              <div>
+                <span className="text-gray-600">Member since:</span>
+                <span className="ml-2 font-medium">2024</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
