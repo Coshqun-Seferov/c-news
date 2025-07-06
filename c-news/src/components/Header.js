@@ -122,7 +122,9 @@ export function Header() {
               {/* User Info */}
               {isAuthenticated && user && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl mb-6">
-                  <UserDisplay user={user} variant="full" />
+                  <Link href="/profil" className="flex items-center space-x-3" onClick={closeMenu}>
+                    <UserDisplay user={user} variant="full" />
+                  </Link>
                 </div>
               )}
 

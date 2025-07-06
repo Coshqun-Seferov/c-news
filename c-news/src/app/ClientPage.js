@@ -4,7 +4,8 @@ import Link from "next/link"
 import { getFeaturedArticles, getCategories, getSiteSettings } from "../lib/api.js"
 import { ArticleCard } from "../components/ArticleCard.js"
 import { Header } from "../components/Header.js"
-import { HotNews } from "../components/HotNews.js"
+import { HotCarousel } from "../components/hot-carousel.jsx"
+import { FeaturedArticlesList } from "../components/featured-articles-list.jsx"
 import { NewsletterSubscription } from "../components/NewsletterSubscription.js"
 import { useState, useEffect } from "react"
 
@@ -61,6 +62,9 @@ export default function ClientPage() {
         </div>
       </section>
 
+      {/* Hot News Carousel */}
+      <HotCarousel />
+
       {/* Main Content with Sidebar */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -70,7 +74,7 @@ export default function ClientPage() {
             <section>
               <div className="text-center mb-12">
                 <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Featured Articles</h2>
-                <p className="text-xl text-gray-600 mb-6">Current news and analytical materials</p>
+                <p className="text-xl text-gray-600 mb-6">Latest news and analytical materials</p>
                 <div className="w-24 h-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full mx-auto" />
               </div>
 
@@ -117,8 +121,14 @@ export default function ClientPage() {
 
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Hot News */}
-            <HotNews limit={8} />
+            {/* Featured Articles */}
+            <div className="glass-card p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                <span className="text-blue-500 mr-2">⭐</span>
+                Featured Articles
+              </h3>
+              <FeaturedArticlesList />
+            </div>
 
             {/* Newsletter Subscription */}
             <NewsletterSubscription />

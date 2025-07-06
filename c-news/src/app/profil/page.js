@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "../../contexts/AuthContext.js"
 import { Header } from "../../components/Header.js"
@@ -16,6 +16,7 @@ export default function Profile() {
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
+    username: "",
     email: "",
     bio: "",
   })
@@ -33,11 +34,18 @@ export default function Profile() {
       setFormData({
         first_name: user.first_name || "",
         last_name: user.last_name || "",
+        username: user.username || "",
         email: user.email || "",
         bio: user.bio || "",
       })
     }
   }, [user])
+
+  const handleLogout = () => {
+    logout()
+    setIsMenuOpen(false)
+    window.location.href = "/"
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -196,6 +204,17 @@ export default function Profile() {
                       />
                     </div>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                    <input
+                      type="text"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      className="input-field disabled:bg-gray-50"
+                    /> 
+                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
@@ -243,6 +262,13 @@ export default function Profile() {
                       </button>
                     )}
                   </div>
+                  <button
+                      onClick={handleLogout}
+                      className="flex items-center w-full p-3 rounded-xl text-red-600 hover:bg-red-50 transition-all duration-200 group"
+                    >
+                      <span className="text-lg mr-3 group-hover:scale-110 transition-transform">🚪</span>
+                      <span className="font-medium">Sign Out</span>
+                    </button>
                 </form>
               )}
 
