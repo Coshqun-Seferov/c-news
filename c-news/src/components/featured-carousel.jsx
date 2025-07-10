@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 
-export function HotCarousel() {
+export function FeaturedCarousel() {
   const [articles, setArticles] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -13,14 +13,14 @@ export function HotCarousel() {
   const intervalRef = useRef(null)
 
   useEffect(() => {
-    fetchHotArticles()
+    fetchFeaturedArticles()
   }, [])
 
   useEffect(() => {
     if (isAutoPlaying && articles.length > 1) {
       intervalRef.current = setInterval(() => {
         setCurrentIndex((prev) => (prev + 1) % articles.length)
-      }, 4000)
+      }, 5000)
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
@@ -34,23 +34,23 @@ export function HotCarousel() {
     }
   }, [isAutoPlaying, articles.length])
 
-  const fetchHotArticles = async () => {
+  const fetchFeaturedArticles = async () => {
     try {
       setIsLoading(true)
       const response = await fetch("https://admin.ilkin.site/api/articles/")
 
       if (!response.ok) {
-        throw new Error("Failed to load hot articles")
+        throw new Error("Failed to load featured articles")
       }
 
       const data = await response.json()
-      // Фильтруем только статьи с is_hot: true
-      const hotArticles = (data.results || data || []).filter((article) => article.is_hot === true)
-      setArticles(hotArticles)
+      // Фильтруем только статьи с is_featured: true
+      const featuredArticles = (data.results || data || []).filter((article) => article.is_featured === true)
+      setArticles(featuredArticles)
       setError("")
     } catch (err) {
-      console.error("Error fetching hot articles:", err)
-      setError("Failed to load hot articles")
+      console.error("Error fetching featured articles:", err)
+      setError("Failed to load featured articles")
       setArticles([])
     } finally {
       setIsLoading(false)
@@ -78,8 +78,8 @@ export function HotCarousel() {
       <div className="glass-card p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-            <span className="text-red-500 mr-2">🔥</span>
-            Hot News
+            <span className="text-blue-500 mr-2">⭐</span>
+            Featured
           </h3>
         </div>
         <div className="animate-pulse">
@@ -92,7 +92,7 @@ export function HotCarousel() {
   }
 
   if (error || articles.length === 0) {
-    return null // Не показываем виджет если нет горячих новостей
+    return null // Не показываем виджет если нет рекомендуемых статей
   }
 
   const currentArticle = articles[currentIndex]
@@ -101,8 +101,8 @@ export function HotCarousel() {
     <div className="glass-card p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-          <span className="text-red-500 mr-2">🔥</span>
-          Hot News
+          <span className="text-blue-500 mr-2">⭐</span>
+          Featured
         </h3>
         <div className="flex items-center space-x-2">
           <button
@@ -129,18 +129,18 @@ export function HotCarousel() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
-              {/* Hot Badge */}
+              {/* Featured Badge */}
               <div className="absolute top-2 left-2">
-                <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
-                  <span className="mr-1">🔥</span>
-                  HOT
+                <span className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                  <span className="mr-1">⭐</span>
+                  FEATURED
                 </span>
               </div>
 
               {/* Category Badge */}
               {currentArticle.category && (
                 <div className="absolute top-2 right-2">
-                  <span className="bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-medium">
+                  <span className="bg-gray-600 text-white px-2 py-1 rounded-full text-xs font-medium">
                     {currentArticle.category.name}
                   </span>
                 </div>
@@ -195,7 +195,7 @@ export function HotCarousel() {
                 key={index}
                 onClick={() => goToSlide(index)}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
-                  index === currentIndex ? "bg-red-500 w-6" : "bg-gray-300 hover:bg-gray-400 w-1.5"
+                  index === currentIndex ? "bg-blue-500 w-6" : "bg-gray-300 hover:bg-gray-400 w-1.5"
                 }`}
               />
             ))}
@@ -229,7 +229,7 @@ export function HotCarousel() {
                   onClick={() => goToSlide(index)}
                   className={`flex-shrink-0 w-12 h-8 rounded overflow-hidden border transition-all duration-200 ${
                     index === currentIndex
-                      ? "border-red-500 ring-1 ring-red-200"
+                      ? "border-blue-500 ring-1 ring-blue-200"
                       : "border-gray-200 hover:border-gray-300"
                   }`}
                 >
@@ -250,10 +250,10 @@ export function HotCarousel() {
       {/* View All Button */}
       <div className="mt-auto pt-3 border-t border-gray-200">
         <Link
-          href="/list?filter=hot"
-          className="block w-full text-center text-xs text-gray-600 hover:text-red-600 transition-colors"
+          href="/list?filter=featured"
+          className="block w-full text-center text-xs text-gray-600 hover:text-blue-600 transition-colors"
         >
-          View All Hot News →
+          View All Featured →
         </Link>
       </div>
     </div>

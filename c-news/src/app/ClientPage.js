@@ -1,13 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { getFeaturedArticles, getCategories, getSiteSettings } from "../lib/api.js"
+import { useState, useEffect } from "react"
+import { getArticles, getCategories, getSiteSettings } from "../lib/api.js"
 import { ArticleCard } from "../components/ArticleCard.js"
 import { Header } from "../components/Header.js"
 import { HotCarousel } from "../components/hot-carousel.jsx"
-import { FeaturedArticlesList } from "../components/featured-articles-list.jsx"
+import { FeaturedCarousel } from "../components/featured-carousel.jsx"
 import { NewsletterSubscription } from "../components/NewsletterSubscription.js"
-import { useState, useEffect } from "react"
 
 export default function ClientPage() {
   const [articles, setArticles] = useState([])
@@ -18,13 +18,15 @@ export default function ClientPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [fetchedArticles, fetchedCategories, settings] = await Promise.all([
-          getFeaturedArticles(),
+        const [articlesData, fetchedCategories, settings] = await Promise.all([
+          getArticles(),
           getCategories(),
           getSiteSettings(),
         ])
 
-        setArticles(fetchedArticles)
+        // Извлекаем статьи из ответа API
+        const allArticles = articlesData.results || articlesData || []
+        setArticles(allArticles)
         setCategories(fetchedCategories)
         setSiteSettings(settings)
       } catch (err) {
@@ -32,11 +34,11 @@ export default function ClientPage() {
         setError(err.message)
       }
     }
-
     loadData()
   }, [])
 
-  const featuredArticles = articles.slice(0, 6)
+  // Фильтруем featured статьи для основного контента
+  const featuredArticles = articles.filter((article) => article.is_featured).slice(0, 6)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 bg-pattern">
@@ -62,12 +64,9 @@ export default function ClientPage() {
         </div>
       </section>
 
-      {/* Hot News Carousel */}
-      <HotCarousel />
-
       {/* Main Content with Sidebar */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
           {/* Main Content */}
           <div className="lg:col-span-3">
             {/* Featured Articles */}
@@ -98,7 +97,6 @@ export default function ClientPage() {
                       <ArticleCard key={article.id} article={article} priority={index < 2} />
                     ))}
                   </div>
-
                   <div className="text-center mt-12">
                     <Link href="/list" className="btn-primary">
                       View All Articles
@@ -111,67 +109,91 @@ export default function ClientPage() {
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <span className="text-gray-400 text-2xl">📰</span>
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">No Articles Found</h3>
-                    <p className="text-gray-600">No published articles yet</p>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">No Featured Articles</h3>
+                    <p className="text-gray-600">No featured articles available yet</p>
                   </div>
                 </div>
               )}
             </section>
           </div>
 
-          {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Featured Articles */}
-            <div className="glass-card p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <span className="text-blue-500 mr-2">⭐</span>
-                Featured Articles
-              </h3>
-              <FeaturedArticlesList />
+          {/* Sidebar - выровнен по верху с основным контентом */}
+          <div className="lg:col-span-1">
+            {/* Отступ для выравнивания с заголовком Featured Articles */}
+            <div className="hidden lg:block mb-12">
+              {/* Пустой блок для выравнивания с заголовком основного контента */}
+              <div className="h-24"></div>
             </div>
 
-            {/* Newsletter Subscription */}
-            <NewsletterSubscription />
+            <div className="sidebar-carousels space-y-6">
+              {/* Hot News Carousel */}
+              <div className="carousel-container">
+                <HotCarousel />
+              </div>
 
-            {/* Categories Widget */}
-            <div className="glass-card p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <span className="text-blue-500 mr-2">📂</span>
-                Categories
-              </h3>
-              <div className="space-y-2">
-                {categories.slice(0, 5).map((category) => (
-                  <Link
-                    key={category.id}
-                    href={`/category/${category.slug}`}
-                    className="block text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors"
-                  >
-                    {category.name}
-                  </Link>
-                ))}
+              {/* Featured Articles Carousel */}
+              <div className="carousel-container">
+                <FeaturedCarousel />
               </div>
             </div>
 
-            {/* Stats Widget */}
-            <div className="glass-card p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <span className="text-green-500 mr-2">📊</span>
-                Statistics
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm">Total Articles</span>
-                  <span className="font-semibold text-gray-800">{articles.length}</span>
+            {/* Other sidebar widgets */}
+            <div className="space-y-6 mt-6">
+              {/* Newsletter Subscription */}
+              <NewsletterSubscription />
+
+              {/* Categories Widget */}
+              <div className="glass-card p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                  <span className="text-blue-500 mr-2">📂</span>
+                  Categories
+                </h3>
+                <div className="space-y-2">
+                  {categories.slice(0, 5).map((category) => (
+                    <Link
+                      key={category.id}
+                      href={`/category/${category.slug}`}
+                      className="block text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors"
+                    >
+                      {category.name}
+                    </Link>
+                  ))}
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm">Categories</span>
-                  <span className="font-semibold text-blue-600">{categories.length}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm">Total Views</span>
-                  <span className="font-semibold text-green-600">
-                    {articles.reduce((sum, article) => sum + (article.view_count || 0), 0)}
-                  </span>
+              </div>
+
+              {/* Stats Widget */}
+              <div className="glass-card p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                  <span className="text-green-500 mr-2">📊</span>
+                  Statistics
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm">Total Articles</span>
+                    <span className="font-semibold text-gray-800">{articles.length}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm">Categories</span>
+                    <span className="font-semibold text-blue-600">{categories.length}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm">Featured</span>
+                    <span className="font-semibold text-blue-600">
+                      {articles.filter((article) => article.is_featured).length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm">Hot News</span>
+                    <span className="font-semibold text-red-600">
+                      {articles.filter((article) => article.is_hot).length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm">Total Views</span>
+                    <span className="font-semibold text-green-600">
+                      {articles.reduce((sum, article) => sum + (article.view_count || 0), 0)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

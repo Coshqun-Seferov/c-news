@@ -18,7 +18,16 @@ export function HotNews({ limit = 5, excludeSlug }) {
   useEffect(() => {
     const fetchHotNews = async () => {
       try {
-        let articles = await getHotArticles()
+        // Try to get hot news, if not available - get regular articles
+        let res = await fetch("https://admin.ilkin.site/api/articles/hot/")
+
+        if (!res.ok) {
+          // Fallback to regular articles
+          res = await fetch("https://admin.ilkin.site/api/articles/")
+        }
+
+        const data = await res.json()
+        let articles = data.results || data || []
 
         // Exclude current article if excludeSlug is provided
         if (excludeSlug) {
@@ -82,15 +91,9 @@ export function HotNews({ limit = 5, excludeSlug }) {
                 <h4 className="text-sm font-medium text-gray-800 group-hover:text-blue-600 line-clamp-2 transition-colors">
                   {article.title}
                 </h4>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="text-xs text-gray-500">{new Date(article.publish_date).toLocaleDateString("en-US")}</p>
-                  <div className="flex items-center space-x-2 text-xs text-gray-500">
-                    <span>👁 {article.view_count || 0}</span>
-                    {article.category && (
-                      <span className="bg-gray-100 px-2 py-0.5 rounded text-xs">{article.category.name}</span>
-                    )}
-                  </div>
-                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {new Date(article.publish_date).toLocaleDateString("en-US")}
+                </p>
               </div>
             </div>
           </Link>
